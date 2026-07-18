@@ -1,16 +1,15 @@
-## Hi there 👋
+# 👋 Hi, I'm Ahmed Adly
 
-<!--
-**ahmedadlyabodhb/ahmedadlyabodhb** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+A dedicated **Python Developer & Learner** focused on building clean and practical applications. I love writing code and expanding my programming knowledge every day.
 
-Here are some ideas to get you started:
+## 🛠️ My Tech Stack
+- **Language:** Python 🐍
+- **Tools:** Git & GitHub 🚀
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+## 🎯 Current Goals
+- Mastering Object-Oriented Programming (OOP) concepts.
+- Learning automated problem-solving and algorithms.
+- Building more console applications to strengthen program logic.
+
+---
+*Feel free to check out my repositories!*
