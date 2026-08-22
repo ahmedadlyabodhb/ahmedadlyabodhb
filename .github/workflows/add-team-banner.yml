@@ -1,0 +1,47 @@
+name: Add prominent Team banner
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  add-team-banner:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add Team banner if missing
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = 'id="nexora-team-banner"'
+          if marker in s:
+              print('Team banner already exists; nothing to do.')
+              raise SystemExit(0)
+
+          css = '''\n.nexora-team-banner{position:relative;margin:0 auto 10px;width:min(1160px,92%);padding:30px 34px;border:1px solid #cfc7ff;border-radius:28px;background:linear-gradient(135deg,#ffffffee,#f2efffff 55%,#e9fff9ee);box-shadow:0 22px 70px #7058ff20;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:24px}.nexora-team-banner:before{content:"";position:absolute;width:260px;height:260px;right:-100px;top:-140px;border-radius:50%;background:#806cff38;filter:blur(30px)}.nexora-team-copy{position:relative;z-index:1}.nexora-team-kicker{font-size:11px;font-weight:950;letter-spacing:.2em;text-transform:uppercase;color:#7058ff;margin-bottom:7px}.nexora-team-title{margin:0;font-size:clamp(26px,4vw,42px);letter-spacing:-.05em}.nexora-team-sub{margin:8px 0 0;color:#64728b;line-height:1.6}.nexora-team-btn{position:relative;z-index:2;display:inline-flex;align-items:center;justify-content:center;gap:9px;white-space:nowrap;padding:16px 23px;border-radius:15px;color:#fff!important;font-weight:950;background:linear-gradient(135deg,#816cff,#5d46dc);box-shadow:0 14px 35px #7058ff35;transition:.25s;overflow:hidden}.nexora-team-btn:hover{transform:translateY(-4px) scale(1.02);box-shadow:0 20px 45px #7058ff50}.nexora-team-btn:after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,#fff6 50%,transparent 65%);transform:translateX(-120%);transition:.6s}.nexora-team-btn:hover:after{transform:translateX(120%)}@media(max-width:700px){.nexora-team-banner{flex-direction:column;align-items:stretch;padding:25px}.nexora-team-btn{width:100%}}\n'''
+          s = s.replace('</style>', css + '</style>', 1)
+
+          banner = '''<section id="nexora-team-banner" class="nexora-team-banner" aria-label="NEXORA Team"><div class="nexora-team-copy"><div class="nexora-team-kicker">NEXORA • DEVELOPERS TEAM</div><h2 class="nexora-team-title">Build with us. Join the Team.</h2><p class="nexora-team-sub">Python developers, builders and curious minds — work on real projects together.</p></div><a class="nexora-team-btn" href="team.html">Meet the Team <span>↗</span></a></section>\n'''
+          target = '<section id="about"'
+          if target not in s:
+              raise SystemExit('Could not find About section; no changes made.')
+          s = s.replace(target, banner + target, 1)
+          p.write_text(s, encoding='utf-8')
+      - name: Commit Team banner
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Add prominent Team banner"
+            git push
+          fi
