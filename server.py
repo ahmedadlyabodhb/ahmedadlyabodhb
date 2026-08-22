@@ -1,8 +1,10 @@
 import os
 import sqlite3
 from flask import Flask, jsonify, request, send_from_directory
+from flask_cors import CORS
 
 app = Flask(__name__, static_folder=".", static_url_path="")
+CORS(app, origins=["https://ahmedadlyabodhb.github.io", "https://ahmed-adly-portfolio.onrender.com"])
 DB_PATH = os.getenv("MESSAGES_DB", "messages.db")
 
 
