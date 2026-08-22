@@ -1,0 +1,40 @@
+name: Apply NEXORA 3D enhancement
+on:
+  push:
+    branches: [nexora-3d-enhancement]
+    paths: ['.github/workflows/apply-nexora-3d.yml']
+permissions:
+  contents: write
+jobs:
+  enhance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject NEXORA effects
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          css=r'''/* NEXORA 3D enhancement */
+          body:after{content:"";position:fixed;inset:-20%;z-index:-2;pointer-events:none;background:radial-gradient(circle at 15% 20%,#7058ff45 0 7%,transparent 25%),radial-gradient(circle at 82% 28%,#08b99438 0 6%,transparent 24%),radial-gradient(circle at 55% 88%,#4b7dff25 0 8%,transparent 28%);filter:blur(18px);animation:nxAmbient 14s ease-in-out infinite alternate}
+          .nexora-3d-layer{position:fixed;inset:0;pointer-events:none;z-index:-1;overflow:hidden}.nexora-orb{position:absolute;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff9 0,#806cff66 18%,#08b99422 55%,transparent 72%);filter:blur(4px);animation:nxOrb 12s ease-in-out infinite alternate}.nexora-orb.one{left:4%;top:18%}.nexora-orb.two{right:5%;top:58%;width:190px;height:190px;animation-delay:-4s}.nexora-grid{position:absolute;inset:-30%;background:linear-gradient(#806cff0b 1px,transparent 1px),linear-gradient(90deg,#806cff0b 1px,transparent 1px);background-size:70px 70px;transform:perspective(700px) rotateX(58deg) translateY(25%);animation:nxGrid 18s linear infinite}
+          .nexora-mark{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#816cff,#5d46dc 58%,#08b994);box-shadow:0 8px 24px #7058ff35;transform:rotate(-4deg);transition:.3s}.nexora-mark:before{content:"";width:14px;height:14px;border:2px solid #fff;border-radius:50%}.nexora-mark:hover{transform:rotateX(18deg) rotateY(-25deg) scale(1.12)}
+          .card,.project,.skill,.nexora-team-banner{transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s}.card:hover,.project:hover{transform:translateY(-7px) rotateX(2deg) rotateY(-2deg) translateZ(10px);box-shadow:0 35px 80px #0005}.skill:hover{transform:translateY(-8px) rotateX(8deg) rotateY(-8deg) translateZ(12px)}.nexora-team-banner:hover{transform:perspective(900px) rotateX(2deg) rotateY(-2deg) translateZ(12px)}
+          @keyframes nxAmbient{to{transform:translate3d(2%,2%,0) scale(1.08)}}@keyframes nxOrb{to{transform:translate3d(55px,-35px,80px) rotateX(30deg) rotateY(35deg) scale(1.18)}}@keyframes nxGrid{to{background-position:70px 70px}}@media(prefers-reduced-motion:reduce){.nexora-3d-layer,.nexora-mark{animation:none!important}}
+          '''
+          marker='/* NEXORA 3D enhancement */'
+          if marker not in s:
+              s=s.replace('</style>',css+'\n</style>',1)
+              layer='<div class="nexora-3d-layer" aria-hidden="true"><div class="nexora-grid"></div><div class="nexora-orb one"></div><div class="nexora-orb two"></div></div>'
+              s=s.replace('<body>', '<body>'+layer, 1)
+              js='''<script>(()=>{if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;document.querySelectorAll('.card,.project,.skill,.nexora-team-banner').forEach(el=>{el.addEventListener('pointermove',e=>{const r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;el.style.transform=`perspective(900px) rotateX(${(-y*5).toFixed(2)}deg) rotateY(${(x*7).toFixed(2)}deg) translateZ(8px)`});el.addEventListener('pointerleave',()=>el.style.transform='')})})();</script>'''
+              s=s.replace('</body>',js+'\n</body>',1)
+              p.write_text(s,encoding='utf-8')
+      - name: Commit enhancement
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Enhance NEXORA homepage with 3D effects"
+          git push
