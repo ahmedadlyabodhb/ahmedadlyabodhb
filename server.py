@@ -14,11 +14,38 @@ def init_db():
             """CREATE TABLE IF NOT EXISTS messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
-                email TEXT NOT NULL,
+                email TEXT,
                 message TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )"""
         )
+        db.commit()
+
+
+def ensure_email_optional():
+    with sqlite3.connect(DB_PATH) as db:
+        columns = [row[1] for row in db.execute("PRAGMA table_info(messages)")]
+        if "email" in columns:
+            # Existing databases may still have email NOT NULL; SQLite cannot alter
+            # that constraint in place, so rebuild the small messages table safely.
+            info = db.execute("PRAGMA table_info(messages)").fetchall()
+            email_not_null = next((row[3] for row in info if row[1] == "email"), 0)
+            if email_not_null:
+                db.execute("ALTER TABLE messages RENAME TO messages_old")
+                db.execute(
+                    """CREATE TABLE messages (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        email TEXT,
+                        message TEXT NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )"""
+                )
+                db.execute(
+                    """INSERT INTO messages (id, name, email, message, created_at)
+                       SELECT id, name, email, message, created_at FROM messages_old"""
+                )
+                db.execute("DROP TABLE messages_old")
         db.commit()
 
 
@@ -36,18 +63,17 @@ def health():
 def create_message():
     data = request.get_json(silent=True) or {}
     name = str(data.get("name", "")).strip()
-    email = str(data.get("email", "")).strip()
     message = str(data.get("message", "")).strip()
 
-    if not name or not email or not message:
-        return jsonify({"ok": False, "error": "Name, email and message are required."}), 400
-    if len(name) > 100 or len(email) > 200 or len(message) > 5000:
+    if not name or not message:
+        return jsonify({"ok": False, "error": "Name and message are required."}), 400
+    if len(name) > 100 or len(message) > 5000:
         return jsonify({"ok": False, "error": "Message is too long."}), 400
 
     with sqlite3.connect(DB_PATH) as db:
         db.execute(
-            "INSERT INTO messages (name, email, message) VALUES (?, ?, ?)",
-            (name, email, message),
+            "INSERT INTO messages (name, email, message) VALUES (?, NULL, ?)",
+            (name, message),
         )
         db.commit()
 
@@ -56,6 +82,8 @@ def create_message():
 
 if __name__ == "__main__":
     init_db()
+    ensure_email_optional()
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "10000")))
 else:
     init_db()
+    ensure_email_optional()
