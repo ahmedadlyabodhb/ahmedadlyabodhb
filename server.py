@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import secrets
 from functools import wraps
 from flask import Flask, jsonify, request, send_from_directory, session
 from flask_cors import CORS
@@ -40,6 +41,13 @@ def init_db():
             status TEXT NOT NULL DEFAULT 'pending',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )""")
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(applications)").fetchall()}
+        if "status_token" not in columns:
+            conn.execute("ALTER TABLE applications ADD COLUMN status_token TEXT")
+        rows = conn.execute("SELECT id FROM applications WHERE status_token IS NULL OR status_token='' ").fetchall()
+        for row in rows:
+            conn.execute("UPDATE applications SET status_token=? WHERE id=?", (secrets.token_urlsafe(24), row[0]))
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_applications_status_token ON applications(status_token)")
         conn.commit()
 
 
@@ -90,11 +98,21 @@ def create_application():
         return jsonify({"ok": False, "error": "A valid qualified application is required."}), 400
     if len(name) > 100 or len(github) > 200 or len(skills) > 300 or len(why) > 3000:
         return jsonify({"ok": False, "error": "Application is too long."}), 400
+    status_token = secrets.token_urlsafe(24)
     with db() as conn:
-        cur = conn.execute("INSERT INTO applications (name,github,skills,why,score) VALUES (?,?,?,?,?)", (name,github,skills,why,score))
+        cur = conn.execute("INSERT INTO applications (name,github,skills,why,score,status_token) VALUES (?,?,?,?,?,?)", (name,github,skills,why,score,status_token))
         conn.commit()
         application_id = cur.lastrowid
-    return jsonify({"ok": True, "id": application_id}), 201
+    return jsonify({"ok": True, "id": application_id, "status_token": status_token}), 201
+
+
+@app.get("/api/applications/status/<status_token>")
+def application_status(status_token):
+    with db() as conn:
+        row = conn.execute("SELECT name,score,status,created_at FROM applications WHERE status_token=?", (status_token,)).fetchone()
+    if not row:
+        return jsonify({"ok": False, "error": "Application not found."}), 404
+    return jsonify({"ok": True, "name": row["name"], "score": row["score"], "status": row["status"], "created_at": row["created_at"]})
 
 
 @app.post("/api/admin/login")
