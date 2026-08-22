@@ -1,7 +1,7 @@
 name: Apply NEXORA 3D enhancement
 on:
   push:
-    branches: [nexora-3d-enhancement]
+    branches: [main]
     paths: ['.github/workflows/apply-nexora-3d.yml']
 permissions:
   contents: write
