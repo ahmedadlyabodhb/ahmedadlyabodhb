@@ -1,0 +1,45 @@
+name: Remove contact email field
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  update-contact-form:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove visible email field
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('index.html')
+          text = path.read_text(encoding='utf-8')
+
+          # Hide/remove the email input from the public contact form.
+          text = re.sub(r'<input\b[^>]*type=["\']email["\'][^>]*>', '', text, flags=re.I)
+          text = re.sub(r'<input\b[^>]*name=["\']email["\'][^>]*>', '', text, flags=re.I)
+
+          # If the existing client-side handler still expects an email value,
+          # provide a non-personal placeholder. The Flask API ignores it.
+          marker = '<script>\n'
+          inject = '''<script>\ndocument.addEventListener('DOMContentLoaded', () => {\n  const email = document.querySelector('input[type="email"], input[name="email"]');\n  if (email) {\n    email.required = false;\n    email.value = 'no-email@local.invalid';\n    const wrapper = email.closest('label, .field-wrap, .form-field, .field') || email.parentElement;\n    if (wrapper) wrapper.style.display = 'none';\n  }\n});\n'''
+          if 'no-email@local.invalid' not in text:
+              text = text.replace(marker, inject, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Remove email field from contact form"
+          git push
