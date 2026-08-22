@@ -1,0 +1,34 @@
+name: Force contact form update
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix-contact-form:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove any email field and bump page version
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          s = re.sub(r'<input\b[^>]*(?:type=["\']email["\']|name=["\']email["\'])[^>]*>', '', s, flags=re.I)
+          s = s.replace('<title>Ahmed Adly — Python Developer</title>', '<title>Ahmed Adly — Python Developer</title><meta name="contact-form-version" content="no-email-v2">')
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Force contact form without email"
+          git push
