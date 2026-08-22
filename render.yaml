@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: ahmed-adly-portfolio
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn server:app
+    autoDeploy: true
