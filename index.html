@@ -33,6 +33,15 @@
 </main>
 <footer class="footer"><div class="wrap footerIn"><span>© 2026 Ahmed Adly — Python Developer</span><span>NEXORA • Build together.</span></div></footer>
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+  const email = document.querySelector('input[type="email"], input[name="email"]');
+  if (email) {
+    email.required = false;
+    email.value = 'no-email@local.invalid';
+    const wrapper = email.closest('label, .field-wrap, .form-field, .field') || email.parentElement;
+    if (wrapper) wrapper.style.display = 'none';
+  }
+});
 const $=s=>document.querySelector(s);const words=['Create.','Innovate.','Experiment.','Ship.'];let wi=0;setInterval(()=>{wi=(wi+1)%words.length;const e=$('#changing');if(e){e.animate([{opacity:0,transform:'translateY(7px)'},{opacity:1,transform:'none'}],{duration:350});e.textContent=words[wi]}},2200);
 let lang='en';function toggleLang(){lang=lang==='en'?'ar':'en';document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';document.querySelectorAll('[data-en]').forEach(e=>e.textContent=e.dataset[lang]);document.querySelectorAll('[data-en-placeholder]').forEach(e=>e.placeholder=e.dataset[lang+'Placeholder']);$('#langBtn').textContent=lang==='en'?'AR':'EN'}
 const grid=$('#projectsGrid');fetch('https://api.github.com/users/ahmedadlyabodhb/repos?sort=updated&direction=desc&per_page=100').then(r=>r.ok?r.json():Promise.reject()).then(rs=>{const x=rs.filter(r=>!r.private);$('#status').textContent=x.length+' public projects from GitHub';grid.innerHTML=x.map(r=>`<article class="card project"><div class="projectTop"><div class="icon">${r.language==='Python'?'🐍':'💻'}</div><span class="arrow">↗</span></div><h3>${safe(r.name)}</h3><p>${safe(r.description||'A project from Ahmed Adly’s GitHub.')}</p><a class="projectLink" href="${r.html_url}" target="_blank" rel="noopener">View repository ↗</a><div class="tags"><span class="tag">${safe(r.language||'Code')}</span><span class="tag">★ ${(r.stargazers_count||0).toLocaleString()}</span><span class="tag">GitHub</span></div></article>`).join('')}).catch(()=>{$('#status').textContent='Projects are available on GitHub.';grid.innerHTML='<article class="card project"><h3>GitHub Projects</h3><p>Explore the latest public work directly on GitHub.</p><a class="projectLink" href="https://github.com/ahmedadlyabodhb?tab=repositories" target="_blank" rel="noopener">Open repositories ↗</a></article>'});function safe(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
