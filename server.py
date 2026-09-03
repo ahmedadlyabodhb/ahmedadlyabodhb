@@ -2,10 +2,12 @@ import os
 import sqlite3
 import secrets
 from functools import wraps
+from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory, session
 from flask_cors import CORS
 
-app = Flask(__name__, static_folder=".", static_url_path="")
+BASE_DIR = Path(__file__).resolve().parent
+app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path="")
 app.config.update(
     SECRET_KEY=os.environ.get("APP_SECRET", "change-this-before-production"),
     SESSION_COOKIE_SECURE=True,
@@ -13,9 +15,8 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="None",
 )
 
-# The public site may be served from GitHub Pages or the Faable deployment.
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
-DB_PATH = os.getenv("MESSAGES_DB", "messages.db")
+DB_PATH = os.getenv("MESSAGES_DB", str(BASE_DIR / "messages.db"))
 
 
 def db():
@@ -41,6 +42,7 @@ def init_db():
             why TEXT NOT NULL,
             score INTEGER NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending',
+            status_token TEXT UNIQUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )""")
         conn.execute("""CREATE TABLE IF NOT EXISTS settings (
@@ -56,12 +58,16 @@ def init_db():
         }
         for key, value in defaults.items():
             conn.execute("INSERT OR IGNORE INTO settings(key,value) VALUES (?,?)", (key, value))
+
         columns = {row[1] for row in conn.execute("PRAGMA table_info(applications)").fetchall()}
         if "status_token" not in columns:
             conn.execute("ALTER TABLE applications ADD COLUMN status_token TEXT")
         rows = conn.execute("SELECT id FROM applications WHERE status_token IS NULL OR status_token='' ").fetchall()
         for row in rows:
-            conn.execute("UPDATE applications SET status_token=? WHERE id=?", (secrets.token_urlsafe(24), row[0]))
+            conn.execute(
+                "UPDATE applications SET status_token=? WHERE id=?",
+                (secrets.token_urlsafe(24), row[0]),
+            )
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_applications_status_token ON applications(status_token)")
         conn.commit()
 
@@ -78,12 +84,22 @@ def admin_required(fn):
 @app.get("/")
 @app.get("/index.html")
 def home():
-    return send_from_directory(".", "index.html")
+    return send_from_directory(BASE_DIR, "index.html")
 
 
+@app.get("/health")
 @app.get("/api/health")
 def health():
     return jsonify({"ok": True, "service": "NEXORA API", "database": os.path.basename(DB_PATH)})
+
+
+@app.get("/<path:filename>")
+def public_file(filename):
+    # Serve the existing static site files while keeping /api routes above it.
+    target = BASE_DIR / filename
+    if target.is_file() and BASE_DIR in target.resolve().parents:
+        return send_from_directory(BASE_DIR, filename)
+    return jsonify({"ok": False, "error": "Page not found."}), 404
 
 
 @app.get("/api/site-config")
@@ -267,7 +283,10 @@ def update_site_config():
             return jsonify({"ok": False, "error": "Invalid setting value."}), 400
     with db() as conn:
         for key, value in clean.items():
-            conn.execute("INSERT INTO settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+            conn.execute(
+                "INSERT INTO settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (key, value),
+            )
         conn.commit()
     return site_config()
 
