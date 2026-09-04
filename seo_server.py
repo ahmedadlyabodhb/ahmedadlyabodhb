@@ -1,11 +1,21 @@
 from pathlib import Path
-import json
+import os
 
 from flask import Response
 
 from server_v2 import app, BASE_DIR
 
 SITE_URL = "https://ahmedadlyabodhb-wvyxf.faable.link/"
+
+
+def _adsense_head():
+    publisher_id = os.getenv("ADSENSE_PUBLISHER_ID", "").strip()
+    if not publisher_id:
+        return ""
+    if not publisher_id.startswith("ca-pub-"):
+        return ""
+    return f'''\n<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={publisher_id}" crossorigin="anonymous"></script>\n<meta name="google-adsense-account" content="{publisher_id}">\n'''
+
 
 SEO_HEAD = '''
 <meta name="author" content="Ahmed Adly (أحمد عدلي)">
@@ -34,6 +44,19 @@ SEO_HEAD = '''
 '''
 
 
+@app.get("/ads.txt")
+def ads_txt():
+    publisher_id = os.getenv("ADSENSE_PUBLISHER_ID", "").strip()
+    if not publisher_id.startswith("ca-pub-"):
+        return Response("", status=404, mimetype="text/plain")
+
+    pub_number = publisher_id.removeprefix("ca-pub-")
+    return Response(
+        f"google.com, pub-{pub_number}, DIRECT, f08c47fec0942fa0\n",
+        mimetype="text/plain",
+    )
+
+
 def _seo_home():
     path = Path(BASE_DIR) / "index.html"
     html = path.read_text(encoding="utf-8")
@@ -43,7 +66,7 @@ def _seo_home():
                         '<meta name="description" content="Ahmed Adly (أحمد عدلي) — Python Developer Portfolio, software projects, skills, services and NEXORA.">')
     html = html.replace('<title>Ahmed Adly — Python Developer</title>',
                         '<title>Ahmed Adly (أحمد عدلي) — Python Developer</title>')
-    html = html.replace('</head>', SEO_HEAD + '</head>', 1)
+    html = html.replace('</head>', SEO_HEAD + _adsense_head() + '</head>', 1)
 
     # Use clean canonical page URLs in the homepage navigation.
     replacements = {
