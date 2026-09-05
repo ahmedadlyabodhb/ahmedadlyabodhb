@@ -15,11 +15,7 @@ init_db()
 
 
 def faable_admin_login():
-    """Robust admin login for Faable deployments.
-
-    Supports canonical and legacy environment variable names and both JSON
-    and form-encoded requests. Credentials are never returned to the client.
-    """
+    """Robust admin login for Faable deployments."""
     ip = client_ip()
     if login_rate_limited(ip):
         return jsonify({"ok": False, "error": "Too many login attempts. Try again later."}), 429
@@ -36,7 +32,10 @@ def faable_admin_login():
 
     supplied_user = str(data.get("username", "")).strip()
     supplied_pass = str(data.get("password", ""))
-    user_ok = hmac.compare_digest(supplied_user, str(expected_user).strip())
+    configured_user = str(expected_user).strip()
+
+    # Usernames are normalized for convenience; passwords remain exact.
+    user_ok = hmac.compare_digest(supplied_user.casefold(), configured_user.casefold())
     pass_ok = hmac.compare_digest(supplied_pass, str(expected_pass))
 
     if not (user_ok and pass_ok):
@@ -45,6 +44,7 @@ def faable_admin_login():
 
     login_attempts.pop(ip, None)
     session.clear()
+    session.permanent = True
     session["admin"] = True
     return jsonify({"ok": True})
 
