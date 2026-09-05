@@ -17,14 +17,17 @@ init_db()
 def faable_admin_login():
     """Robust admin login for Faable deployments.
 
-    Supports the canonical ADMIN_USERNAME/ADMIN_PASSWORD names and the
-    older ADMIN_USER/ADMIN_PASS aliases, without exposing credentials.
+    Supports canonical and legacy environment variable names and both JSON
+    and form-encoded requests. Credentials are never returned to the client.
     """
     ip = client_ip()
     if login_rate_limited(ip):
         return jsonify({"ok": False, "error": "Too many login attempts. Try again later."}), 429
 
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        data = request.form.to_dict()
+
     expected_user = os.getenv("ADMIN_USERNAME") or os.getenv("ADMIN_USER")
     expected_pass = os.getenv("ADMIN_PASSWORD") or os.getenv("ADMIN_PASS")
 
